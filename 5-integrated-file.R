@@ -31,7 +31,7 @@ weather_data <- read.csv(paste(in_dir, paste(source, 'daily.csv', sep = '_'), se
 weather_data$event_date <- as.Date(weather_data$event_date)
 
 # merge files -----
-ft_demo <- merge(ft_data, demo_data, by = c('case_no'), all.x = TRUE)
+ft_demo <- merge(ft_data, demo_data, by = c('case_no'))
 ft_demo_weight <- merge(ft_demo, weight_data,  by = c('case_no'), all.x = TRUE)
 ft_demo_weight_brd <- merge(ft_demo_weight, brd_data,  by.x = c('case_no', 'event_date'), by.y = c('case_no', 'Date'), all.x = TRUE)
 
