@@ -67,14 +67,15 @@ daily_data_unique <- daily_data_unique%>%
 
 # change initial_date to be initial
 daily_data_unique <- daily_data_unique%>%
-  mutate(initial_date = initial)
+  mutate(initial_date = initial)%>%
+  mutate(section = 'KM')
 
 # eliminate extra columns  
 daily_data_unique$initial <- NULL
 
 daily_data_unique$case_no <- paste('H', str_pad(daily_data_unique$case_no, 6, pad = '0'), sep='')
 
-daily_data_summary <- unique(select(daily_data_unique, c('farm_animal_id', 'initial_date', 'count', 'transmitter_number', 'case_no')))
+daily_data_summary <- unique(select(daily_data_unique, c('farm_animal_id', 'initial_date', 'count', 'transmitter_number', 'case_no')))%>%mutate(section = 'KM')
 
 file_out <- paste(out_dir, paste(source, section, sep= '_'), sep = '/')
 write.csv(daily_data_unique, paste(file_out, 'daily.csv', sep  ='_'), na = '', row.names = FALSE)

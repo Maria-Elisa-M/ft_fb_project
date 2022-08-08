@@ -64,7 +64,7 @@ all_summary$initial_date <- as.Date(all_summary$initial_date)
 
 # filter all record for cows born between  2015 and 2019
 dc_demo_data <- dc_demo_data%>%filter(BDAT >= as.Date("2015-01-01") &
-                                        BDAT <= as.Date("2019-03-01"))
+                                        BDAT <= as.Date("2019-03-31"))
 
 # FT DC merging -----
 # Last digits in EID after 00 are the same as transmitter number

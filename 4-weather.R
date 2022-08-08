@@ -27,7 +27,7 @@ weather_d$event_date <- ymd_hms(weather_d$event_date)
 
 weather_d <- weather_d%>%
   mutate(temp = (temperature-32) * 5/9)%>%
-  mutate(thi = (1.8 * temp +32) - (0.55-0.0055*relative_humidity)*(1.8*temp -26))
+  mutate(thi = (temperature) - (0.55-0.0055*relative_humidity)*(temperature-58))
 
 # more daily weather
 weather_day <- weather_d%>%

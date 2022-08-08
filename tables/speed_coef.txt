@@ -1,0 +1,21 @@
+variable & estimate & SE & P value \ 
+(Intercept) & 390.116 & 6.614 & 0\
+thi & -0.391 & 0.028 & 0\
+rdd pneu all-5 & -0.09 & 1.848 & 0.961\
+rdd pneu all-4 & -3.504 & 1.857 & 0.059\
+rdd pneu all-3 & -4.662 & 1.87 & 0.013\
+rdd pneu all-2 & -9.129 & 1.886 & 0\
+rdd pneu all-1 & -20.21 & 1.882 & 0\
+rdd pneu all0 & -34.972 & 1.88 & 0\
+rdd pneu all1 & -10.22 & 1.923 & 0\
+rdd pneu all2 & -9.627 & 1.965 & 0\
+rdd pneu all3 & -14.596 & 1.999 & 0\
+rdd pneu all4 & -16.787 & 2.037 & 0\
+rdd pneu all5 & -16.998 & 2.078 & 0\
+rdd pneu all7 & -10.217 & 1.119 & 0\
+parity2 & -13.455 & 2.111 & 0\
+parity3 & -23.362 & 2.309 & 0\
+feeding day & 7.542 & 0.026 & 0\
+quartile weight2 & 14.119 & 2.456 & 0\
+quartile weight3 & 21.159 & 2.459 & 0\
+quartile weight4 & 30.229 & 2.494 & 0\

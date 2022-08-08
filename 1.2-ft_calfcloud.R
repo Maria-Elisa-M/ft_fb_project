@@ -41,7 +41,7 @@ data_ft <- data_ft%>%
 
 #  select columns of interest
 data_ft <- select(data_ft, c('farm_animal_id', 'event_date', 'transmitter_number', 'initial_date', 
-                             'speed_absolute', 'speed_relative', 'milk_day', 
+                             'speed_absolute', 'speed_relative', 'milk_day', 'calf',
                              'feeding_day', 'visits_w_milk', 'visits_wo_milk', 'feeder', 'feed'))
 
 data_ft <- data_ft%>%
@@ -63,35 +63,45 @@ sprintf("after removing duplicated records: %i", nrow(data_ft))
 
 # select data from unique calves in ft -----
 
-# if calves have the same farm_animal_id and initial date
-
-# then assign the same transmitter number
-id_transmitter <- data_ft%>%
-  select(c('transmitter_number', 'farm_animal_id'))%>%
-  unique()%>%
-  mutate(transmitter_number = ifelse(is.na(transmitter_number) | transmitter_number == '', 0, transmitter_number))%>%
-  group_by(farm_animal_id)%>%
-  summarise(count = n(), 
-            min = min(transmitter_number), 
-            max = max(transmitter_number))%>%
-  mutate(transmitter_number2 = ifelse((min == 0 & count == 2)| min == max, max, NA))
-
-# count how many calves have more than one Transmiter number
-mutiple_TN <- id_transmitter%>%
-  group_by(count)%>%
-  summarise(n = n())
-
-# If they have only two transmitter numbers assign the one that is not 0
-new_transmitter <- filter(id_transmitter, count == 2)%>%
-  filter(transmitter_number2 != 0)%>%
-  select(c('farm_animal_id', 'transmitter_number2'))
-
-# Join left with the new transmitter numbers
-data_ft <- data_ft%>%merge(new_transmitter, by = 'farm_animal_id', all.x = TRUE)
-
+# # if calves have the same farm_animal_id and initial date
+# 
+# # then assign the same transmitter number
+# id_transmitter <- data_ft%>%
+#   select(c('transmitter_number', 'farm_animal_id'))%>%
+#   unique()%>%
+#   mutate(transmitter_number = ifelse(is.na(transmitter_number) | transmitter_number == '', 0, transmitter_number))%>%
+#   group_by(farm_animal_id)%>%
+#   summarise(count = n(), 
+#             min = min(transmitter_number), 
+#             max = max(transmitter_number), 
+#             med = max(transmitter_number[transmitter_number != max(transmitter_number)]))
+# 
+# only_one <- id_transmitter%>%
+#   filter(min == max & min != 0)%>%
+#   mutate(transmitter_number2 =  max)
+#   
+# one_andzero <- id_transmitter%>%
+#   filter(min == 0 & count == 2)%>%
+#   mutate(transmitter_number2 =  max)
+# 
+# 
+# # count how many calves have more than one Transmiter number
+# mutiple_TN <- id_transmitter%>%
+#   group_by(count)%>%
+#   summarise(n = n())
+# 
+# # If they have only two transmitter numbers assign the one that is not 0
+# new_transmitter <- rbind(one_andzero, only_one)%>%
+#   select(c('farm_animal_id', 'transmitter_number2'))
+# 
+# # Join left with the new transmitter numbers
+# data_ft <- data_ft%>%merge(new_transmitter, by = 'farm_animal_id', all.x = TRUE)
+# 
 data_ft <- data_ft%>%
-  mutate(transmitter_number = ifelse(!is.na(transmitter_number2), transmitter_number2, transmitter_number))
-data_ft$transmitter_number2 <- NULL
+   mutate(transmitter_number = ifelse(transmitter_number =='',
+                                    calf, transmitter_number))
+
+data_ft$calf <- NULL
 
 # find unique cases-----
 # find the minimum initial date for each combination trasmitter number - animal id
@@ -115,14 +125,17 @@ daily_data_unique <- daily_data_unique%>%
 
 # change initial_date to be initial
 daily_data_unique <- daily_data_unique%>%
-  mutate(initial_date = initial)
+  mutate(initial_date = initial)%>%
+  mutate(section = 'CC')
 
 # eliminate extra columns  
 daily_data_unique$initial <- NULL
 
 daily_data_unique$case_no <- paste('C', str_pad(daily_data_unique$case_no, 6, pad = '0'), sep='')
 
-daily_data_summary <- unique(select(daily_data_unique, c('farm_animal_id', 'initial_date', 'count', 'transmitter_number', 'case_no')))
+daily_data_summary <- unique(select(daily_data_unique, c('farm_animal_id', 'initial_date', 'count', 'transmitter_number', 'case_no')))%>%
+  mutate(section = 'CC')
+
 
 file_out <- paste(out_dir, paste(source, section, sep= '_'), sep = '/')
 write.csv(daily_data_unique, paste(file_out, 'daily.csv', sep  ='_'), na = '', row.names = FALSE)

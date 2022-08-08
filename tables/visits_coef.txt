@@ -1,0 +1,11 @@
+variable & estimate & SE & P value \ 
+(Intercept) & -3.414 & 0.038 & 0\
+num pneu21 & -0.058 & 0.011 & 0\
+num pneu22 & -0.071 & 0.028 & 0.012\
+quartile weight2 & -0.04 & 0.015 & 0.009\
+quartile weight3 & -0.056 & 0.015 & 0\
+quartile weight4 & -0.029 & 0.015 & 0.064\
+milk & 0.221 & 0.004 & 0\
+parity2 & 0.01 & 0.013 & 0.414\
+parity3 & 0.036 & 0.013 & 0.008\
+thi & 0 & 0 & 0.28\

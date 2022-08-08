@@ -14,6 +14,7 @@ out_dir <- "outfiles"
 
 ft_daily <- read.csv(paste(in_dir, 'integrated_file.csv', sep = '/'))
 ft_daily$event_date <- as_date(ft_daily$event_date)
+ft_daily$initial_date <- as_date(ft_daily$initial_date)
 
 # feeder -------
 # feeder fill
@@ -38,7 +39,9 @@ ft_daily_dup <- ft_daily_2%>%
   filter(any(count_day==2))%>%
   arrange(event_date)%>%
   mutate(lag = feeding_day - lag(feeding_day))%>%
-  mutate(event_date = ifelse(lag > 1 & double ==1, event_date - 1, event_date))
+  mutate(event_date = ifelse((lag > 1 | is.na(lag)) & double ==1, as_date(event_date) - days(1), as_date(event_date)))%>%
+  mutate(feeding_day = as.numeric(as_date(event_date) - as_date(initial_date)))%>%
+  mutate(feeding_day = ifelse(feeding_day < 0, 0, feeding_day))
 
 ft_daily_dup$event_date <- as_date(ft_daily_dup$event_date)
 
@@ -53,7 +56,7 @@ ft_daily_3 <- rbind(ft_daily_unique, ft_daily_dup)
 # compile records into one per day----
 ft_daily_3 <- ft_daily_3%>%
   group_by(case_no, event_date)%>%
-  mutate(time = (milk_day*1000/speed_absolute))%>% 
+  mutate(time = (abs(milk_day)*1000/speed_absolute))%>% 
   mutate(total_time = sum(time, na.rm = TRUE))%>% # total time drinking milk
   mutate(total_milk = sum(abs(milk_day), na.rm = TRUE)*1000)%>%  # there are negative milk intakes
   mutate(speed2 = total_milk/total_time)%>%
@@ -89,20 +92,21 @@ ft_daily_5 <- ft_daily_4%>%
                                                        ifelse(feeding_day >50 & feeding_day <= 65, 6, 0)))))))
 
 # weigh in kg ----
-ft_daily_5 <- ft_daily_5%>%mutate(weight_kg = weight * 0.454)
+ft_daily_5 <- ft_daily_5%>%mutate(weight_kg = round((weight * 0.454),0))
 
 # parity ------
 ft_daily_5 <- ft_daily_5%>%mutate(parity = ifelse(LACT >= 3, 3, LACT))
   
 # days in feeder ----
 calf_data <- ft_daily_5%>%
+  filter(feeding_day <=32)%>%
   group_by(case_no)%>%
   summarise(feeding_daymax = max(feeding_day), 
             feeding_daymin = min(feeding_day),
             days = n())
 
 # days in feeder ----
-calf_sample <- calf_data%>%filter(feeding_daymax >= 50 & feeding_daymax <= 150 & days >= 50)
+calf_sample <- calf_data%>%filter(feeding_daymax == 32 & days >=27)
 daily_sample <- subset(ft_daily_5, case_no %in% calf_sample$case_no)
 
 rm(ft_daily_5, ft_daily_4, ft_daily_3, ft_daily_2)
@@ -168,3 +172,4 @@ drop <- c('rdd_pneu_1', 'rdd_pneu_2', 'rdd_pneu_3', 'rdd_pneu_4', 'dd_pneu_1','d
 daily_data <- daily_data0%>%select(-all_of(drop))
 
 write.csv(daily_data, paste(out_dir, 'integrated_file_v2.csv', sep = '/'), row.names = FALSE)
+

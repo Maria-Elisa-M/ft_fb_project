@@ -11,6 +11,7 @@ data_day <- read.csv(paste(in_dir , 'integrated_file_sample.csv', sep = '/'))
 data_visit <- read.csv(paste('infiles/visits', 'visits_file1.csv', sep = '/'))
 data_day <- data_day%>%filter(feeding_day <= 60)
 
+data_32 <- read.csv(paste(in_dir, 'integrated_file_sample32.csv', sep = '/'))
 
 data_day_nonsense <-data_day%>%filter(day_ent >= 30 |day_ent< 0)
 
@@ -56,7 +57,7 @@ data_day_sum_old <- data_day_old%>%group_by(feeding_day)%>%summarise(med_ent = m
 # above 24 before 40 days
 # before 2019
 data_day_40 <- data_day%>%filter(feeding_day <= 40 & day_ent >=0 &day_ent< 100)%>%
-  mutate(ad_lib = ifelse(day_ent >= 20, 1,0))%>%
+  mutate(ad_lib = ifelse(day_ent >= 15, 1,0))%>%
   mutate(ten_plus = ifelse(day_ent >= 10, 1,0))
 
 
@@ -85,7 +86,7 @@ data_day_40_SE <- data_day_40_calf%>%mutate(int_ent = ifelse(intake > ent, 1, 0)
 
 
 # counts 
-calfs32 <- nrow(data_day_40_calf%>%filter(ad_lib_days >= 32))
+calfs32 <- nrow(data_day_40_calf%>%filter(ad_lib_days >= 27))
 calfs32/nrow(data_day_40_calf)
 
 # counts 
@@ -113,5 +114,20 @@ new_s <- new_s%>%filter(feed < 300 & feed >= 0)
 ggplot(new_s, aes(x = feed)) + geom_histogram() +
   theme_classic() + facet_wrap(.~group)
 
+day_ent32 <- data_32%>%filter(day_ent >=0 & day_ent <35)
 
 
+# above 24 before 40 days
+# before 2019
+day_ent32 <- day_ent32%>%
+  mutate(ad_lib = ifelse(day_ent >= 24, 1,0))%>%
+  mutate(ten_plus = ifelse(day_ent >= 10, 1,0))
+
+
+data_day_40_calf <- day_ent32%>%group_by(case_no)%>%summarise(ad_lib_days = sum(ad_lib),
+                                                                tenplus_days = sum(ten_plus),
+                                                                mean_ent = mean(day_ent), 
+                                                                intake = sum(milk_day), 
+                                                                ent = sum(day_ent), 
+                                                              n = n(), 
+                                                              pec = ad_lib_days/n)
