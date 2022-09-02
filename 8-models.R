@@ -4,6 +4,7 @@
 # New model 
 
 library(dplyr)
+library(tidyr)
 library(stringr)
 library(ggplot2)
 library(lemon)
@@ -32,7 +33,7 @@ data32D_g <- data32D%>%
   mutate(extra_visit = ifelse(visits_wo_milk > 0, 1, 0))%>%
   filter(!is.na(parity))%>%
   filter(obs>= 32)%>%
-  group_by(case_no, parity, weight_kg, section)%>%
+  group_by(case_no, weight_kg, section, parity)%>%
   summarise(
     milk =mean(milk_day, na.rm = TRUE), 
             thi = round(mean(thi,  na.rm = TRUE), 1), 
@@ -50,16 +51,32 @@ data32D_g <- data32D%>%
 # 32 days models -------
 data32D_g <- data32D_g%>%mutate(quartile_weight = ntile(weight_kg, 4))
 data32D_g$quartile_weight <- as.factor(data32D_g$quartile_weight)
+data32D_g <- data32D_g%>%mutate(quartile_thi = ntile(thi, 4))
+data32D_g$quartile_thi <- as.factor(data32D_g$quartile_thi)
 data32D_g$parity <- as.factor(data32D_g$parity)
 data32D_g$feeder <- as.factor(data32D_g$feeder)
 data32D_g <- data32D_g%>%mutate(num_pneu2 = ifelse(num_pneu >= 2, 2, num_pneu))
 data32D_g$num_pneu2 <- as.factor(data32D_g$num_pneu2)
 
 ### visits mdel ----
-fit32_visits <- glm(extra_visits ~ num_pneu2 + quartile_weight +  milk +parity + thi + offset(log(obs)),
+fit32_visits <- glm(extra_visits ~ num_pneu2 + quartile_weight +  milk +parity + thi + offset((obs)),
                     data = data32D_g, family = 'quasipoisson')
 
 summ_visits <- summary(fit32_visits)
+with(summary(fit32_visits), 1 - deviance/null.deviance)
+
+# corretaltion tests
+cor.test(data32D_g$weight_kg,data32D_g$milk32 )
+fit32_milk1 <- lm(milk32 ~ num_pneu2 + quartile_weight +  parity + quartile_thi,
+                    data = data32D_g)
+
+summary(fit32_milk1)
+
+fit32_speed1 <- lm(speed ~ num_pneu2 + quartile_weight +  parity + quartile_thi,
+                  data = data32D_g)
+
+summary(fit32_speed1)
+
 ### residuals ------
 # layout(matrix(c(1,2,3,4),2,2)) 
 # plot(fit32_visits)
@@ -94,17 +111,18 @@ data32D$rdd_pneu_all <- as.factor(data32D$rdd_pneu_all)
 
 ## milk and speed model -----
 
-fit32_milk <- lmer(total_milk ~  thi + rdd_pneu_all + feeding_day + parity + 
+fit32_milk <- lmer(total_milk ~  thi + rdd_pneu_all+ feeding_day + parity + 
                      quartile_weight + (1|feeder/case_no), data = data32D)
 
 summ_milk <- summary(fit32_milk)
+MuMIn::r.squaredGLMM(fit32_milk)
 
 fit32_speed <- lmer(speed_clean ~  thi + rdd_pneu_all + parity + feeding_day +
                       quartile_weight + (1|feeder/case_no), data = data32D, 
                     control = lmerControl(optimizer ="Nelder_Mead"))
 
 summ_speed <- summary(fit32_speed)
-
+MuMIn::r.squaredGLMM(fit32_speed)
 
 ### residuals----
 # residuals_milk32 <- resid(fit32_milk)
@@ -162,8 +180,8 @@ plot_brd <- function(model, sh, dh, ylabel){
     geom_hline(yintercept= healthy_df$emmean) +
     geom_hline(yintercept= healthy_df$emmean - healthy_df$SE, linetype = 'dashed') +
     geom_hline(yintercept= healthy_df$emmean + healthy_df$SE, linetype = 'dashed') +
-    annotate("text", x = diff_baseline$x +0.1 , y = diff_baseline$y, label = '*', size = 8) +
-    annotate("text", x = diff_prev$x-0.1 , y = diff_prev$y, label = "\206", size = 6) +
+    annotate("text", x = diff_baseline$x +0.1 , y = diff_baseline$y, label = '*', size = 10) +
+    annotate("text", x = diff_prev$x-0.1 , y = diff_prev$y, label = "\206", size = 8) +
     theme(axis.title = element_text(size = 35), axis.text = element_text(size = 30), 
           text = element_text(family = "serif")
     )
@@ -196,10 +214,11 @@ cont_var_plot <- function(fit_name, var_name, y_lab, x_lab){
   
   colnames(model_data)[1] <- 'var'
   model_data$pred <-predict(model)
+  #model_data$pred <- model@frame[,1]
   min_var <- round(min(model_data[,1]))
   max_var <- round(max(model_data[,1]))
   
-  list_var <- list(var = seq(min_var,max_var), feeder = 0, case_no = 0)
+  list_var <- list(var = seq(min_var,max_var, by = 0.5), feeder = 0, case_no = 0)
   names(list_var)[1] <- c(eval(var_name))
   
   
@@ -233,12 +252,24 @@ cont_var_plot <- function(fit_name, var_name, y_lab, x_lab){
     data1 <- anti_join(data1, data5)
     data6 <- sample_n(data1, nrow(model_predict), replace = res)
     data1 <- anti_join(data1, data6)
+    data7 <- sample_n(data1, nrow(model_predict), replace = res)
+    data1 <- anti_join(data1, data7)
+    data8 <- sample_n(data1, nrow(model_predict), replace = res)
+    data1 <- anti_join(data1, data8)
+    data9 <- sample_n(data1, nrow(model_predict), replace = res)
+    data1 <- anti_join(data1, data9)
+    data10 <- sample_n(data1, nrow(model_predict), replace = res)
+    
     
     plot <- plot + geom_jitter(aes(y =data2$pred, x = data2$var), color = 'gray60') +
       geom_jitter(aes(y =data3$pred, x = data3$var), color = 'gray60') +
       geom_jitter(aes(y =data4$pred, x = data4$var), color = 'gray60') +
       geom_jitter(aes(y =data5$pred, x = data5$var), color = 'gray60') +
-      geom_jitter(aes(y =data6$pred, x = data6$var), color = 'gray60')
+      geom_jitter(aes(y =data6$pred, x = data6$var), color = 'gray60') +
+      geom_jitter(aes(y =data7$pred, x = data7$var), color = 'gray60') +
+      geom_jitter(aes(y =data8$pred, x = data8$var), color = 'gray60') +
+      geom_jitter(aes(y =data9$pred, x = data9$var), color = 'gray60') +
+      geom_jitter(aes(y =data10$pred, x = data10$var), color = 'gray60')
   }
   return(plot)
 }
@@ -288,7 +319,7 @@ cont_var_plot_visits <- function(fit_name, var_name, y_lab, x_lab){
                            at = list_var, 
                            lmer.df = "satterthwaite", type= 'response')%>%
     data.frame()
-  model_data <- sample_n(model_data, 600)
+  model_data <- sample_n(model_data, 1000)
   model_predict <- model_predict%>%merge(model_data, all = TRUE)
   
   plot <- ggplot(model_predict, aes(x =model_predict[,var_name])) +
@@ -305,6 +336,7 @@ cont_var_plot_visits <- function(fit_name, var_name, y_lab, x_lab){
 ## milk ------
 milk_ylab <- 'Daily milk consumption, L'
 parity_milk_pairs <- as.data.frame(pairs(emmeans(fit32_milk, 'parity')))
+weight_milk_pairs <- as.data.frame(pairs(emmeans(fit32_milk, 'quartile_weight')))
 
 parity_milk_plot <- cat_var_plot(fit32_milk, 'parity', milk_ylab, 'Parity', label= TRUE, c('C', 'B', 'A'), 0.05) +
   scale_y_continuous(limits = c(8.1,9.75),breaks = seq(8.25,9.75, by = 0.25))  +
@@ -313,9 +345,9 @@ parity_milk_plot <- cat_var_plot(fit32_milk, 'parity', milk_ylab, 'Parity', labe
 
 thi_milk_plot <- cont_var_plot(fit32_milk, 'thi', 
                           milk_ylab, 'Temperature-humidity index')+
-  scale_y_continuous(limits = c(8.25,10),breaks = seq(8.25,10, by = 0.25)) +
+  scale_y_continuous(limits = c(6,12),breaks = seq(6,12, by = 0.5)) +
   scale_x_continuous(limits = c(0,80), breaks = seq(0,80,5)) +
-  annotate('text', y = 9.75, x =10, label = paste(paste('\U03B2', round(fit32_milk@beta[2], 3), sep='='), 
+  annotate('text', y = 11.5, x =10, label = paste(paste('\U03B2', round(fit32_milk@beta[2], 3), sep='='), 
                                                 'P<0.01', sep= ', '),
            size=10, family = 'serif') +
   coord_capped_cart(bottom = 'both', left = 'both')
@@ -326,7 +358,7 @@ weight_milk_plot <- cat_var_plot(fit32_milk, 'quartile_weight', milk_ylab, 'Birt
   coord_capped_cart(left = 'both')
   
 
-plot_brd_milk <- plot_brd(fit32_milk, 0.01, 0.03, milk_ylab) + 
+plot_brd_milk <- plot_brd(fit32_milk, 0.02, 0.04, milk_ylab) + 
   scale_y_continuous(limits = c(8.25,10),breaks = seq(8.25,10, by = 0.25))+
   coord_capped_cart(left = 'both')
 
@@ -336,7 +368,7 @@ speed_ylab <- 'Drinking speed, ml/min'
 weight_speed_pairs <- as.data.frame(pairs(emmeans(fit32_speed, 'quartile_weight')))
 parity_speed_pairs <- as.data.frame(pairs(emmeans(fit32_speed, 'parity')))
 
-parity_speed_plot <- cat_var_plot(fit32_speed, 'parity', speed_ylab, 'Parity', label= TRUE, c('A', 'B', 'C'), 1.8) +
+parity_speed_plot <- cat_var_plot(fit32_speed, 'parity', speed_ylab, 'Parity', label= TRUE, c('A', 'B', 'C'), 3.5) +
   scale_y_continuous(limits = c(440,580), breaks = seq(440,580, by =20)) +
   scale_x_discrete(labels = c('1', '2', '3+')) +
   coord_capped_cart(left = 'both')
@@ -344,21 +376,21 @@ parity_speed_plot <- cat_var_plot(fit32_speed, 'parity', speed_ylab, 'Parity', l
 
 thi_speed_plot <- cont_var_plot(fit32_speed, 'thi', 
                                speed_ylab, 'Temperature-humidity index') +
-  scale_y_continuous(limits = c(440,560), breaks = seq(440,560, by =20)) +
+  scale_y_continuous(limits = c(400,600), breaks = seq(400,600, by =20)) +
   scale_x_continuous(limits = c(0,80), breaks = seq(0,80,5)) +
-  annotate('text', y = 550, x =10, label = paste(paste('\U03B2', round(fit32_speed@beta[2], 3), sep='='), 
+  annotate('text', y = 580, x =10, label = paste(paste('\U03B2', round(fit32_speed@beta[2], 3), sep='='), 
                                                  'P<0.01', sep= ', '),
            size=10, family = 'serif') +
   coord_capped_cart(left = 'both', bottom  = 'both')
 
 weight_speed_plot <- cat_var_plot(fit32_speed, 'quartile_weight', speed_ylab, 'Birth weight, kg', 
-                              label= TRUE, c('C', 'B', 'B', 'A'), 1.8) + 
+                              label= TRUE, c('C', 'B', 'B', 'A'), 3.5) + 
   scale_y_continuous(limits = c(440,560), breaks = seq(440,560, by =20)) +
   scale_x_discrete(labels = quantiles_weight$range[1:4]) +
   coord_capped_cart(left = 'both')
 
 
-plot_brd_speed <- plot_brd(model = fit32_speed, sh = 0.2, dh = 1.5, ylabel =speed_ylab) +
+plot_brd_speed <- plot_brd(model = fit32_speed, sh = 0.5, dh = 1.8, ylabel =speed_ylab) +
   scale_y_continuous(limits = c(440,560), breaks = seq(440,560, by =20)) +
   coord_capped_cart(left = 'both')
 
@@ -386,14 +418,14 @@ parity_visits_plot <- cat_var_plot_visit(fit32_visits, 'parity', visits_ylab, 'P
   coord_capped_cart(left = 'both')
 
 weight_visits_plot <- cat_var_plot_visit(fit32_visits, 'quartile_weight', visits_ylab, 'Birth weight, kg', 
-                                         label= TRUE, c('B', 'AB', 'AB', 'A'), 0.2) +
+                                         label= TRUE, c('A', 'AB', 'B', 'AB'), 0.2) +
   scale_y_continuous(limits = c(5,10), breaks = seq(5,10, by =1)) +
   scale_x_discrete(labels = quantiles_weight$range[1:4]) +
   coord_capped_cart(left = 'both')
 
 plot_brd_visits <- cat_var_plot_visit(fit32_visits, 'num_pneu2', visits_ylab, 'BRD incidences, count', 
                                       label= TRUE, c('A', 'B', 'AB'), 0.2) +
-  scale_x_discrete(labels = c('1', '2+')) +
+  scale_x_discrete(labels = c('0', '1', '2+')) +
   scale_y_continuous(limits = c(5,10), breaks = seq(5,10, by =1)) +
   coord_capped_cart(left = 'both')
 
@@ -479,10 +511,59 @@ table(coef_milk, coef_names, 'tables/milk_coef.txt', 6)
 coef_speed <- data.frame(coef(summ_speed))%>%round(3)
 table(coef_speed, coef_names, 'tables/speed_coef.txt', 6)
 
-## speed coefficients-----
+
+
+
+## visits coefficients-----
 coef_visits <- data.frame(coef(summ_visits))
-# coef_visits$Std..Error <- exp(coef_visits$Std..Error + coef_visits$Estimate)
+# coef_visits$ul <- exp(2*coef_visits$Std..Error + coef_visits$Estimate)
+# coef_visits$ll <- exp(-2*coef_visits$Std..Error + coef_visits$Estimate)
 # coef_visits$Estimate <- exp(coef_visits$Estimate)
 # coef_visits$Std..Error <- coef_visits$Std..Error - coef_visits$Estimate
 coef_visits <- coef_visits%>%round(3)
 table(coef_visits, coef_names, 'tables/visits_coef.txt', 5)
+
+
+conf_int <- data.frame(coef(summ_visits))
+conf_int$Estimate <- exp(conf_int$Estimate)
+conf_int <-conf_int%>%cbind(exp(confint(fit32_visits)))
+conf_int <- conf_int%>%round(3)
+conf_int <- data.frame(var = row.names(conf_int))%>%cbind(conf_int)
+write.csv(conf_int, 'tables/conf_int.csv', row.names = FALSE)
+
+## descriptive stats attempt -----
+data32_long <- data32D_g%>%
+  select(c("weight_kg", "thi", "speed", "milk","extra_visits", "case_no"))%>%
+  pivot_longer(cols = c ("speed", "milk","extra_visits"), 
+               names_to = "variable", values_to = 'values')
+
+data32_longs <- data32_long%>%
+  group_by(variable)%>%
+  summarize(n = n(), 
+            mean = mean(values),
+            med = quantile(values, c(1/2)),
+            sd = sd(values), 
+            iqr = IQR(values), 
+            min = min(values), 
+            max = max(values))
+
+data32_long2 <- data32D%>%
+  group_by(case_no, weight_kg, section, LACT, BDAT)%>%
+  summarise(
+    feeder = max(feeder),
+    num_pneu = max(inc_pneu))%>%ungroup()
+
+data32_long2 <- data32_long2%>%mutate(year = year(as_date(BDAT)))
+data32_long2 <- data32_long2%>%mutate(LACT = ifelse(LACT >= 3, 3, LACT))
+data32_long2 <- data32_long2%>%mutate(num_pneu = ifelse(num_pneu>= 2, 2, num_pneu))
+
+
+data32_long2s <- data32_long2%>%                                
+  select(c("LACT", "num_pneu", "feeder", "section", "year"))%>%
+  pivot_longer(cols = c("LACT", "num_pneu", "feeder"), 
+               names_to = "variable", values_to = 'values')%>%
+  group_by(variable, values, year)%>%
+  summarize(n = n())
+
+data32_long2s<- data32_long2s%>%pivot_wider(names_from = c(year), values_from = c(n))
+  
