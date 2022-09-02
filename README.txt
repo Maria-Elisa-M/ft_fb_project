@@ -1,6 +1,6 @@
 Author: Maria E. Montes
-Date created:
-Last edited:
+Date created: forgot
+Last edited: 9/2/2022
 Contact:montes7@purdue.edu
 
 Folder Structure:
@@ -16,8 +16,8 @@ infiles
 	weather
 outfiles
 plots
-models
-summaries
+milk plan
+tables
 
 Scripts:
 
